@@ -16,6 +16,7 @@ import { getMetricMetadata } from "./tools/getMetricMetadata.js";
 import { getMetrics } from "./tools/getMetrics.js";
 import { getMonitor } from "./tools/getMonitor.js";
 import { getMonitors } from "./tools/getMonitors.js";
+import { listMetrics } from "./tools/listMetrics.js";
 import { searchLogs } from "./tools/searchLogs.js";
 
 // Parse command line arguments
@@ -70,6 +71,7 @@ getMonitor.initialize();
 getDashboards.initialize();
 getDashboard.initialize();
 getMetrics.initialize();
+listMetrics.initialize();
 getMetricMetadata.initialize();
 getEvents.initialize();
 getIncidents.initialize();
@@ -147,12 +149,29 @@ server.tool(
 
 server.tool(
   "get-metrics",
+  "Query metrics data from Datadog. The q parameter is REQUIRED and must use Datadog query syntax: 'aggregation:metric.name{scope}' (e.g., 'avg:system.cpu.user{*}' or 'sum:kubernetes_state.deployment.replicas_ready{kube_namespace:production}'). Use from/to for custom time ranges (Unix timestamps), defaults to last hour. Essential for retrieving time-series data from Datadog.",
+  {
+    q: z.string(),
+    from: z.number().optional(),
+    to: z.number().optional(),
+    resolution: z.number().optional()
+  },
+  async (args) => {
+    const result = await getMetrics.execute(args);
+    return {
+      content: [{ type: "text", text: JSON.stringify(result) }]
+    };
+  }
+);
+
+server.tool(
+  "list-metrics",
   "List available metrics from Datadog. Optionally use the q parameter to search for specific metrics matching a pattern. Helpful for discovering metrics to use in monitors or dashboards.",
   {
     q: z.string().optional()
   },
   async (args) => {
-    const result = await getMetrics.execute(args);
+    const result = await listMetrics.execute(args);
     return {
       content: [{ type: "text", text: JSON.stringify(result) }]
     };
