@@ -2,9 +2,10 @@ import { client, v1 } from "@datadog/datadog-api-client";
 
 type GetMonitorsParams = {
   groupStates?: string[];
-  tags?: string;
+  groups?: string;
   monitorTags?: string;
   limit?: number;
+  withDowntimes?: boolean;
 };
 
 let configuration: client.Configuration;
@@ -29,16 +30,21 @@ export const getMonitors = {
 
   execute: async (params: GetMonitorsParams) => {
     try {
-      const { groupStates, tags, monitorTags, limit } = params;
+      const { groupStates, groups, monitorTags, limit, withDowntimes } = params;
 
       const apiInstance = new v1.MonitorsApi(configuration);
 
       const groupStatesStr = groupStates ? groupStates.join(",") : undefined;
 
+      const monitorTagsStr = monitorTags?.startsWith("service:")
+        ? monitorTags
+        : `service:${monitorTags}`;
+
       const apiParams: v1.MonitorsApiListMonitorsRequest = {
         groupStates: groupStatesStr,
-        tags: tags,
-        monitorTags: monitorTags
+        tags: groups,
+        monitorTags: monitorTagsStr,
+        withDowntimes: withDowntimes
       };
 
       const response = await apiInstance.listMonitors(apiParams);

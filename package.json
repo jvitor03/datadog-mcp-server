@@ -26,13 +26,15 @@
   "license": "MIT",
   "dependencies": {
     "@datadog/datadog-api-client": "^1.33.1",
-    "@modelcontextprotocol/sdk": "^1.8.0",
+    "@modelcontextprotocol/sdk": "^1.13.2",
     "dotenv": "^16.4.7",
+    "express": "^5.1.0",
     "minimist": "^1.2.8",
     "typescript": "^5.8.2",
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@types/express": "^5.0.3",
     "@types/minimist": "^1.2.5"
   },
   "files": [
