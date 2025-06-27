@@ -6,6 +6,7 @@ import minimist from "minimist";
 import { z } from "zod";
 import express, { Request, Response } from "express";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 
 // Import tools
 import { aggregateLogs } from "./tools/aggregateLogs.js";
@@ -314,7 +315,13 @@ server.tool(
 const app = express();
 app.use(express.json());
 
-app.post('/mcp', async (req: Request, res: Response) => {
+// Store transports for each session type
+const transports = {
+  streamable: {} as Record<string, StreamableHTTPServerTransport>,
+  sse: {} as Record<string, SSEServerTransport>
+};
+
+app.post('/streamable', async (req: Request, res: Response) => {
   // In stateless mode, create a new instance of transport and server for each request
   // to ensure complete isolation. A single instance would cause request ID collisions
   // when multiple clients connect concurrently.
@@ -346,7 +353,7 @@ app.post('/mcp', async (req: Request, res: Response) => {
 });
 
 // SSE notifications not supported in stateless mode
-app.get('/mcp', async (req: Request, res: Response) => {
+app.get('/streamable', async (req: Request, res: Response) => {
   console.log('Received GET MCP request');
   res.writeHead(405).end(JSON.stringify({
     jsonrpc: "2.0",
@@ -359,7 +366,7 @@ app.get('/mcp', async (req: Request, res: Response) => {
 });
 
 // Session termination not needed in stateless mode
-app.delete('/mcp', async (req: Request, res: Response) => {
+app.delete('/streamable', async (req: Request, res: Response) => {
   console.log('Received DELETE MCP request');
   res.writeHead(405).end(JSON.stringify({
     jsonrpc: "2.0",
@@ -371,6 +378,29 @@ app.delete('/mcp', async (req: Request, res: Response) => {
   }));
 });
 
+// Legacy SSE endpoint for older clients
+app.get('/sse', async (req, res) => {
+  // Create SSE transport for legacy clients
+  const transport = new SSEServerTransport('/messages', res);
+  transports.sse[transport.sessionId] = transport;
+  
+  res.on("close", () => {
+    delete transports.sse[transport.sessionId];
+  });
+  
+  await server.connect(transport);
+});
+
+// Legacy message endpoint for older clients
+app.post('/messages', async (req, res) => {
+  const sessionId = req.query.sessionId as string;
+  const transport = transports.sse[sessionId];
+  if (transport) {
+    await transport.handlePostMessage(req, res, req.body);
+  } else {
+    res.status(400).send('No transport found for sessionId');
+  }
+});
 
 // Start the server
 const PORT = 8080;
